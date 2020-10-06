@@ -16,7 +16,7 @@ namespace TelegramBot {
 
         static void Main(string[] args) {
 
-            string token = File.ReadAllText(@"C:\SKILLBOX_STUDY\C#\HOMEWORK\9\TelegramBot\token");
+            string token = File.ReadAllText(@"C:\SKILLBOX_STUDY\C#\HOMEWORK\9\token");
             string[] cities = File.ReadAllText(@"C:\SKILLBOX_STUDY\C#\HOMEWORK\9\TelegramBot\WorldCities.txt").Split('\n');
 
             Console.WriteLine(cities[6]);
