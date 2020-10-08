@@ -2,17 +2,21 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Text;
-using System.Threading.Tasks;
 using Telegram.Bot;
 using Telegram.Bot.Types.Enums;
-
+using Telegram.Bot.Types.ReplyMarkups;
+using Newtonsoft.Json.Linq;
+using System.Net.Http.Headers;
 
 namespace TelegramBot {
     class Program {
-        static TelegramBotClient Bot;
+        private static TelegramBotClient Bot;
+
+        private static Dictionary<string, string> menu = new Dictionary<string, string> {
+            ["Dialog"] = "Давай пообщаемся?",
+            ["Story"] = "Расскажи сказку!",
+            ["Sities"] = "Поиграем в города."
+        };
 
         static void Main(string[] args) {
 
@@ -23,6 +27,8 @@ namespace TelegramBot {
 
             Bot = new TelegramBotClient(token);
             Bot.OnMessage += Bot_OnMessage;
+            Bot.OnCallbackQuery += Bot_OnCallbackQuery;
+
             Bot.StartReceiving();
 
             Console.ReadKey();
@@ -31,48 +37,79 @@ namespace TelegramBot {
         }
 
 
+        /// <summary>
+        /// Обработчик событий нажатия от пользователя
+        /// </summary>
+        /// <param name="sender">Объект отправивший сигнал</param>
+        /// <param name="e">Событие отправки сигнала</param>
+        private static async void Bot_OnCallbackQuery(object sender, Telegram.Bot.Args.CallbackQueryEventArgs e) {
+            string buttonText = e.CallbackQuery.Data;
+
+            if (buttonText == menu["Story"]) {
+
+                await Bot.SendTextMessageAsync(e.CallbackQuery.From.Id, returnFairyTale(@"C:\SKILLBOX_STUDY\C#\HOMEWORK\9\TelegramBot\FairyTales.json"));
+
+            }
+        }
+
+
+        /// <summary>
+        /// Обработчик сообщения боту
+        /// </summary>
+        /// <param name="sender">Объект отправивший сигнал</param>
+        /// <param name="e">Событие отправки сообщения</param>
         private static async void Bot_OnMessage(object sender, Telegram.Bot.Args.MessageEventArgs e) {
 
             var message = e.Message;
 
             if (message == null) return;        // если сообщение null выходим из метода
 
-            string text = $"{DateTime.Now.ToLongTimeString()}: {message.Chat.FirstName} {message.Chat.Id} {message.Text}";
+            long chatId = message.Chat.Id;  // идентификатор чата
 
-            Console.WriteLine($"{text} TypeMessage: {message.Type.ToString()}");
-
-
-            //if (message.Type == Telegram.Bot.Types.Enums.MessageType.Document) {
-            //    Console.WriteLine(message.Document.FileId);
-            //    Console.WriteLine(message.Document.FileName);
-            //    Console.WriteLine(message.Document.FileSize);
-            //    Console.WriteLine(message.Document.MimeType);
-            //    Console.WriteLine(message.Document.Thumb);
-
-            //DownLoad(message.Document.FileId, message.Document.FileName);
-            //}
-
+            // Получение и сохранение ботом фото, аудио, видео и документа (и отправка их назад пользователю)
             switch (message.Type) {
-                case MessageType.Photo:
+                case MessageType.Photo: // пользователь прислал фото
+                    string fileNamePhoto = message.Photo[message.Photo.Length - 1].FileUniqueId + ".jpeg";  // имя файла фото
+                    string fileIdPhoto = message.Photo[message.Photo.Length - 1].FileId;                    // идентификатор файла фото
+
                     // Последнее фото в массиве PhotoSize является оригиналом
-                    DownLoad(message.Photo[message.Photo.Length - 1].FileId, message.Photo[message.Photo.Length - 1].FileUniqueId + ".jpeg");
+                    DownLoad(fileIdPhoto, fileNamePhoto);
+
+                    // Отправка фото обратно
+                    await Bot.SendPhotoAsync(chatId, fileIdPhoto);
 
                     break;
 
-                case MessageType.Audio:
-                    DownLoad(message.Audio.FileId, message.Audio.Title +
-                                            "." + message.Audio.MimeType.Split("/")[1]);
+                case MessageType.Audio: // пользователь прислал аудио
+                    string fileNameAudio = message.Audio.Title + "." + message.Audio.MimeType.Split("/")[1];    // имя файла аудио
+                    string fileIdAudio = message.Audio.FileId;                                                  // идентификатор файла аудио
+
+                    DownLoad(fileIdAudio, fileNameAudio);
+
+                    // Отправка аудио обратно
+                    await Bot.SendAudioAsync(chatId, fileIdAudio);
 
                     break;
 
-                case MessageType.Video:
-                    DownLoad(message.Video.FileId, message.Video.FileUniqueId +
-                                            "." + message.Video.MimeType.Split("/")[1]);
+                case MessageType.Video: // пользователь прислал видео
+                    string fileNameVideo = message.Video.FileUniqueId + "." + message.Video.MimeType.Split("/")[1]; // имя файла видео
+                    string fileIdVideo = message.Video.FileId;                                                      // идентификатор файла видео
+
+                    DownLoad(fileIdVideo, fileNameVideo);
+
+                    // Отправка аудио обратно
+                    await Bot.SendVideoAsync(chatId, fileIdVideo);
 
                     break;
 
-                case MessageType.Document:
-                    DownLoad(message.Document.FileId, message.Document.FileName);
+                case MessageType.Document:  // пользователь прислал документ
+                    string fileNameDocument = message.Document.FileName;    // имя файла документа
+                    string fileIdDocument = message.Document.FileId;        // идентификатор файла документа
+
+                    DownLoad(fileIdDocument, fileNameDocument);
+
+                    // Отправка аудио обратно
+                    await Bot.SendDocumentAsync(message.Chat.Id, fileIdDocument);
 
                     break;
 
@@ -85,37 +122,61 @@ namespace TelegramBot {
 
             if (message.Text == null) return;   // если текст сообщения null выходим из метода
 
+            // Сообщение от бота (в формате HTML)
+            var answerText = "<b>Выберите команду:</b>\n" +
+                               "/start - <i>запуск бота</i>\n" +
+                               "/menu - <i>вывод меню</i>";
+
             switch (message.Text) {
                 case "/start":
+                    await Bot.SendTextMessageAsync(chatId, answerText, ParseMode.Html); // вывод начального сообщения
 
                     break;
 
                 case "/menu":
+                    // Создаем меню (клавиатуру)
+                    var inlineKeyboard = new InlineKeyboardMarkup(new[] {
+                        new[] { InlineKeyboardButton.WithCallbackData(menu["Dialog"]) },
+                        new[] { InlineKeyboardButton.WithCallbackData(menu["Story"]) },
+                        new[] { InlineKeyboardButton.WithCallbackData(menu["Sities"]) }
+                    });
 
-                    break;
-
-                case "/game":
+                    await Bot.SendTextMessageAsync(chatId, "<b>Чем займемся?</b>", parseMode: ParseMode.Html, replyMarkup: inlineKeyboard);
 
                     break;
 
                 default:
-
-                    var messageText = message.Text;
-
-                    await Bot.SendTextMessageAsync(message.Chat.Id, $"{messageText}");
-
-
                     break;
 
 
             }
 
-            
+            //await Bot.SendTextMessageAsync(chatId, returnFairyTale(@"C:\SKILLBOX_STUDY\C#\HOMEWORK\9\TelegramBot\FairyTales.json"));    // проба
 
         }
 
+        /// <summary>
+        /// Возвращает случайную сказку
+        /// </summary>
+        /// <param name="path">Путь к json-файлу со сказками</param>
+        /// <returns>Строка со сказкой</returns>
+        private static string returnFairyTale(string path) {
+            string json = File.ReadAllText(path);
+            Random rnd = new Random(DateTime.Now.Millisecond);
+            
+            var jsonStories = JObject.Parse(json)["stories"].ToArray();
+            int index = rnd.Next(0, jsonStories.Length);
 
-        static async void DownLoad(string fileId, string path) {
+            return jsonStories[index].ToString();
+        }
+
+
+        /// <summary>
+        /// Сохраняет переданный пользователем файл по его идентификатору
+        /// </summary>
+        /// <param name="fileId">Идентификатор переданного файла</param>
+        /// <param name="path">Путь по которому сохраняем файл</param>
+        private static async void DownLoad(string fileId, string path) {
             var file = await Bot.GetFileAsync(fileId);
 
             FileStream fs = new FileStream(path, FileMode.Create);
