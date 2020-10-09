@@ -11,7 +11,10 @@ using Newtonsoft.Json;
 
 namespace TelegramBot {
     class Program {
-        private static TelegramBotClient Bot;
+        private static TelegramBotClient Bot;       // телеграм-бот
+        private static SessionsClient dFlowClient;  // DialogFlow-клиент
+        private static string projectID;            // идентификатор проекта (DialogFlow)
+        private static string sessionID;            // идентификатор сессии (DialogFlow)
         
 
         private static Dictionary<string, string> menu = new Dictionary<string, string> {
@@ -21,8 +24,8 @@ namespace TelegramBot {
 
         static void Main(string[] args) {
 
-            string token = File.ReadAllText(@"C:\SKILLBOX_STUDY\C#\HOMEWORK\9\TelegramBot\Data_Files\token");                           // токен для бота
-            string dFlowKeyPath = @"C:\SKILLBOX_STUDY\C#\HOMEWORK\9\TelegramBot\Data_Files\tokenApiAi";                                 // путь к токену для DialogFlow бота
+            string token = File.ReadAllText(@"C:\SKILLBOX_STUDY\C#\HOMEWORK\9\TelegramBot\Data_Files\tokens\token");                    // токен для бота
+            string dFlowKeyPath = @"C:\SKILLBOX_STUDY\C#\HOMEWORK\9\TelegramBot\Data_Files\tokens\small-talk-rghy-1fa31b152405.json";   // путь к токену для DialogFlow бота
 
             string[] cities = File.ReadAllText(@"C:\SKILLBOX_STUDY\C#\HOMEWORK\9\TelegramBot\Data_Files\WorldCities.txt").Split('\n');  // список городов
 
@@ -32,10 +35,16 @@ namespace TelegramBot {
             Bot = new TelegramBotClient(token);
 
             // Создание DialogFlow клиента
-            var dic = JsonConvert.DeserializeObject<Dictionary<string, string>>(File.ReadAllText(dialogFlowKeyFile));
+            var dic = JsonConvert.DeserializeObject<Dictionary<string, string>>(File.ReadAllText(dFlowKeyPath));
 
-            // Конфигурация для подключения DirectFlow-бота
-            
+            projectID = dic["project_id"];
+            sessionID = dic["private_key_id"];
+
+            var dialogFlowBuilder = new SessionsClientBuilder {
+                CredentialsPath = dFlowKeyPath
+            };
+
+            dFlowClient = dialogFlowBuilder.Build();
 
             Bot.OnMessage += Bot_OnMessage;
             Bot.OnCallbackQuery += Bot_OnCallbackQuery;
@@ -59,8 +68,21 @@ namespace TelegramBot {
             if (buttonText == menu["Story"]) {
 
                 await Bot.SendTextMessageAsync(e.CallbackQuery.From.Id, returnFairyTale(@"C:\SKILLBOX_STUDY\C#\HOMEWORK\9\TelegramBot\Data_Files\FairyTales.json"));
+                
+            }
+
+            if (buttonText == menu["Sities"]) {
+                string answerText = "<b>ГОРОДА.</b>\n" +
+                                    "<i>В игре учавствуют названия городов, состоящие из одного слова и не включающие в себя знак '-'." +
+                                    "Каждый игрок по очереди пишет название города, начинающееся с той буквы на которую заканчивалось название предыдущего города." +
+                                    "Проигрывает тот, кто напишет 'не знаю'.</i>";
+
+                await Bot.SendTextMessageAsync(e.CallbackQuery.From.Id, answerText, parseMode: ParseMode.Html);
+
+                
 
             }
+
         }
 
 
@@ -158,13 +180,28 @@ namespace TelegramBot {
 
                 default:
                     // Общение с ботом через DialogFlow
+                    // Инициализируем аргументы ответа
+                    SessionName session = SessionName.FromProjectSession(projectID, sessionID);
+                    var queryInput = new QueryInput {
+                        Text = new TextInput {
+                            Text = message.Text,
+                            LanguageCode = "ru-ru"
+                        }
+                    };
 
-                    //var resp = apiAi.TextRequest(message.Text);
-                    //answerText = resp.Result.Fulfillment.Speech;
+                    // Создаем ответ пользователю
+                    DetectIntentResponse response = await dFlowClient.DetectIntentAsync(session, queryInput);
 
-                    //if (answerText == "") {
-                    //    answerText = apiAi.TextRequest("непонятно").Result.Fulfillment.Speech;
-                    //}
+                    answerText = response.QueryResult.FulfillmentText;
+
+                    if (answerText == "") {
+                        queryInput.Text.Text = "непонятно";
+                    }
+
+                    // Создаем ответ пользователю, если введен непонятный вопрос (набор букв)
+                    response = await dFlowClient.DetectIntentAsync(session, queryInput);
+
+                    answerText = response.QueryResult.FulfillmentText;
 
                     await Bot.SendTextMessageAsync(chatId, answerText); // отправляем пользователю ответ
 
