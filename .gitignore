@@ -340,4 +340,5 @@ ASALocalRun/
 healthchecksdb
 
 # My ignore
+/Data_Files/tokens
 /Data_Files/tokens/*
