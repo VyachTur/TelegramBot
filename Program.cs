@@ -6,26 +6,37 @@ using Telegram.Bot;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 using Newtonsoft.Json.Linq;
-using System.Net.Http.Headers;
+using Google.Cloud.Dialogflow.V2;
+using Newtonsoft.Json;
 
 namespace TelegramBot {
     class Program {
         private static TelegramBotClient Bot;
+        
 
         private static Dictionary<string, string> menu = new Dictionary<string, string> {
-            ["Dialog"] = "Давай пообщаемся?",
             ["Story"] = "Расскажи сказку!",
             ["Sities"] = "Поиграем в города."
         };
 
         static void Main(string[] args) {
 
-            string token = File.ReadAllText(@"C:\SKILLBOX_STUDY\C#\HOMEWORK\9\TelegramBot\token");  // токен для бота
-            string[] cities = File.ReadAllText(@"C:\SKILLBOX_STUDY\C#\HOMEWORK\9\TelegramBot\WorldCities.txt").Split('\n');
+            string token = File.ReadAllText(@"C:\SKILLBOX_STUDY\C#\HOMEWORK\9\TelegramBot\Data_Files\token");                           // токен для бота
+            string dFlowKeyPath = @"C:\SKILLBOX_STUDY\C#\HOMEWORK\9\TelegramBot\Data_Files\tokenApiAi";                                 // путь к токену для DialogFlow бота
 
-            Console.WriteLine(cities[6]);
+            string[] cities = File.ReadAllText(@"C:\SKILLBOX_STUDY\C#\HOMEWORK\9\TelegramBot\Data_Files\WorldCities.txt").Split('\n');  // список городов
 
+            //Console.WriteLine(cities[6]);
+
+            // Создание telegram-бота
             Bot = new TelegramBotClient(token);
+
+            // Создание DialogFlow клиента
+            var dic = JsonConvert.DeserializeObject<Dictionary<string, string>>(File.ReadAllText(dialogFlowKeyFile));
+
+            // Конфигурация для подключения DirectFlow-бота
+            
+
             Bot.OnMessage += Bot_OnMessage;
             Bot.OnCallbackQuery += Bot_OnCallbackQuery;
 
@@ -47,7 +58,7 @@ namespace TelegramBot {
 
             if (buttonText == menu["Story"]) {
 
-                await Bot.SendTextMessageAsync(e.CallbackQuery.From.Id, returnFairyTale(@"C:\SKILLBOX_STUDY\C#\HOMEWORK\9\TelegramBot\FairyTales.json"));
+                await Bot.SendTextMessageAsync(e.CallbackQuery.From.Id, returnFairyTale(@"C:\SKILLBOX_STUDY\C#\HOMEWORK\9\TelegramBot\Data_Files\FairyTales.json"));
 
             }
         }
@@ -123,9 +134,10 @@ namespace TelegramBot {
             if (message.Text == null) return;   // если текст сообщения null выходим из метода
 
             // Сообщение от бота (в формате HTML)
-            var answerText = "<b>Выберите команду:</b>\n" +
-                               "/start - <i>запуск бота</i>\n" +
-                               "/menu - <i>вывод меню</i>";
+            var answerText =    "Меня зовут Сказочник.\nЯ люблю общаться с людьми, рассказывать разные сказки и играть в 'Города'!\n\n" +
+                                "<b>Выбери команду:</b>\n" +
+                                "/start - <i>запуск бота</i>\n" +
+                                "/menu - <i>вывод меню</i>";
 
             switch (message.Text) {
                 case "/start":
@@ -136,7 +148,6 @@ namespace TelegramBot {
                 case "/menu":
                     // Создаем меню (клавиатуру)
                     var inlineKeyboard = new InlineKeyboardMarkup(new[] {
-                        new[] { InlineKeyboardButton.WithCallbackData(menu["Dialog"]) },
                         new[] { InlineKeyboardButton.WithCallbackData(menu["Story"]) },
                         new[] { InlineKeyboardButton.WithCallbackData(menu["Sities"]) }
                     });
@@ -146,12 +157,21 @@ namespace TelegramBot {
                     break;
 
                 default:
+                    // Общение с ботом через DialogFlow
+
+                    //var resp = apiAi.TextRequest(message.Text);
+                    //answerText = resp.Result.Fulfillment.Speech;
+
+                    //if (answerText == "") {
+                    //    answerText = apiAi.TextRequest("непонятно").Result.Fulfillment.Speech;
+                    //}
+
+                    await Bot.SendTextMessageAsync(chatId, answerText); // отправляем пользователю ответ
+
                     break;
 
 
             }
-
-            //await Bot.SendTextMessageAsync(chatId, returnFairyTale(@"C:\SKILLBOX_STUDY\C#\HOMEWORK\9\TelegramBot\FairyTales.json"));    // проба
 
         }
 
