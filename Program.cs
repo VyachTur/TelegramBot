@@ -87,7 +87,6 @@ namespace TelegramBot {
 
                 long chatId = e.CallbackQuery.Message.Chat.Id;
 
-                //games = new AllGames(); // создает контейнер для игр
                 List<string> copyCities = new List<string>();
                 copyCities.AddRange(cities);    // делаем копию списка городов, чтобы источник не менялся
 
