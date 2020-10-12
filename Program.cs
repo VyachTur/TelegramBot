@@ -223,7 +223,7 @@ namespace TelegramBot {
 
                         } else {
                             // Если города нет в "википедии" бота, либо его уже называли
-                            await Bot.SendTextMessageAsync(chatId, $"Город '{city}' моя Википедия не знает! Или этот город уже называли.");
+                            await Bot.SendTextMessageAsync(chatId, $"Город '{city}' моя Википедия не знает! Возможно этот город уже называли.");
 
                             return;
                         }
