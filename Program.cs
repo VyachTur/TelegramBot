@@ -89,7 +89,8 @@ namespace TelegramBot {
 
                 //games = new AllGames(); // создает контейнер для игр
                 List<string> copyCities = new List<string>();
-                copyCities.AddRange(cities);
+                copyCities.AddRange(cities);    // делаем копию списка городов, чтобы источник не менялся
+
                 games.addGame(new CitiesGame(chatId, copyCities));  // добавляет новую игру в города с ботом
 
             }
@@ -227,12 +228,6 @@ namespace TelegramBot {
 
                             return;
                         }
-                            
-
-
-
-                        //games.removeGame(chatId);   // удаляем игру
-
 
                         return;
                     }
