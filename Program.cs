@@ -15,7 +15,10 @@ namespace TelegramBot {
         private static SessionsClient dFlowClient;  // DialogFlow-клиент
         private static string projectID;            // идентификатор проекта (DialogFlow)
         private static string sessionID;            // идентификатор сессии (DialogFlow)
-        
+
+        private static List<string> cities = File.ReadAllText(@"C:\SKILLBOX_STUDY\C#\HOMEWORK\9\TelegramBot\Data_Files\WorldCities.txt").Split("\r\n").ToList();  // список городов
+        private static List<CitiesGame> games;      // все текущие игры в города
+
 
         private static Dictionary<string, string> menu = new Dictionary<string, string> {
             ["Story"] = "Расскажи сказку!",
@@ -27,7 +30,7 @@ namespace TelegramBot {
             string token = File.ReadAllText(@"C:\SKILLBOX_STUDY\C#\HOMEWORK\9\TelegramBot\Data_Files\tokens\token");                    // токен для бота
             string dFlowKeyPath = @"C:\SKILLBOX_STUDY\C#\HOMEWORK\9\TelegramBot\Data_Files\tokens\small-talk-rghy-1fa31b152405.json";   // путь к токену для DialogFlow бота
 
-            string[] cities = File.ReadAllText(@"C:\SKILLBOX_STUDY\C#\HOMEWORK\9\TelegramBot\Data_Files\WorldCities.txt").Split('\n');  // список городов
+            
 
             //Console.WriteLine(cities[6]);
 
@@ -46,6 +49,9 @@ namespace TelegramBot {
 
             dFlowClient = dialogFlowBuilder.Build();
 
+            games = new List<CitiesGame>();
+
+            // Обрабатывем сообщения от пользователя бота
             Bot.OnMessage += Bot_OnMessage;
             Bot.OnCallbackQuery += Bot_OnCallbackQuery;
 
@@ -66,20 +72,29 @@ namespace TelegramBot {
             string buttonText = e.CallbackQuery.Data;
 
             if (buttonText == menu["Story"]) {
-
+                // Выбран рассказ сказки
                 await Bot.SendTextMessageAsync(e.CallbackQuery.From.Id, returnFairyTale(@"C:\SKILLBOX_STUDY\C#\HOMEWORK\9\TelegramBot\Data_Files\FairyTales.json"));
                 
             }
 
             if (buttonText == menu["Sities"]) {
+                // Выбрана игра в города
                 string answerText = "<b>ГОРОДА.</b>\n" +
-                                    "<i>В игре учавствуют названия городов, состоящие из одного слова и не включающие в себя знак '-'." +
+                                    "<i>В игре учавствуют названия городов, состоящие из одного слова и не включающие в себя знак '-'.\n" +
                                     "Каждый игрок по очереди пишет название города, начинающееся с той буквы на которую заканчивалось название предыдущего города." +
-                                    "Проигрывает тот, кто напишет 'не знаю'.</i>";
+                                    "Проигрывает тот, кто напишет 'конец'.</i>";
 
                 await Bot.SendTextMessageAsync(e.CallbackQuery.From.Id, answerText, parseMode: ParseMode.Html);
 
-                
+                long chatId = e.CallbackQuery.Message.Chat.Id;
+
+                CitiesGame game = new CitiesGame(chatId, cities)/*;*/
+
+                games.Add(new CitiesGame(chatId, cities));    // добавляем идентификатор чата игрока
+
+
+                //Console.WriteLine(games.Find(item => item.IdGame == chatId).ToString());
+                //gamers.Contains()
 
             }
 
@@ -142,7 +157,16 @@ namespace TelegramBot {
                     DownLoad(fileIdDocument, fileNameDocument);
 
                     // Отправка аудио обратно
-                    await Bot.SendDocumentAsync(message.Chat.Id, fileIdDocument);
+                    await Bot.SendDocumentAsync(chatId, fileIdDocument);
+
+                    break;
+
+
+                case MessageType.Text:
+                    // Если чат пользователя в игре
+                    if (games. {
+
+                    }
 
                     break;
 
@@ -195,6 +219,7 @@ namespace TelegramBot {
                     answerText = response.QueryResult.FulfillmentText;
 
                     if (answerText == "") {
+                        // Intents для непонятных боту фраз
                         queryInput.Text.Text = "непонятно";
                     }
 
