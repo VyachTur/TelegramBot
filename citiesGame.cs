@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
@@ -11,7 +12,15 @@ namespace TelegramBot {
     class CitiesGame {
         #region Properties
 
+        /// <summary>
+        /// Идентификатор игры
+        /// </summary>
         public long IdGame { get; }
+
+        /// <summary>
+        /// Последний названный ботом город
+        /// </summary>
+        public string LastCityBotSay { get; set; }
         
         /// <summary>
         /// Города о которых знает бот (рандом из городов Вики бота с шагом 20-80)
@@ -50,7 +59,9 @@ namespace TelegramBot {
         public CitiesGame(long idGame, List<string> citiesWikiBot, List<string> citiesKnowBOT) {
             IdGame = idGame;
             CitiesWikiBOT = citiesWikiBot;
+            //CitiesWikiBOT.AddRange(citiesWikiBot);
             CitiesKnowBOT = citiesKnowBOT;
+            //CitiesKnowBOT.AddRange(citiesKnowBOT);
         }
 
         /// <summary>
@@ -58,7 +69,9 @@ namespace TelegramBot {
         /// </summary>
         /// <param name="idGame">Идентификатор игры</param>
         /// <param name="citiesWikiBot"></param>
-        public CitiesGame(long idGame, List<string> citiesWikiBot) : this(idGame, citiesWikiBot, null) { }
+        public CitiesGame(long idGame, List<string> citiesWikiBot) : this(idGame, citiesWikiBot, new List<string>()) {
+            this.makeCityKnowBot(citiesWikiBot);
+        }
 
         #endregion
 
@@ -67,31 +80,22 @@ namespace TelegramBot {
         #region Methods
 
         /// <summary>
-        /// Создать базу знаний названий городов бота
-        /// </summary>
-        /// <param name="citiesWikiBot">Города, которые "знает" бот</param>
-        public void makeCityKnowBot(List<string> citiesWikiBot) {
-            Random rnd = new Random();
-
-            for (int i = rnd.Next(10, 40); i < citiesWikiBot.Count; i += rnd.Next(20, 90)) {
-                CitiesKnowBOT.Add(citiesWikiBot[i]);
-            }
-        }
-
-        /// <summary>
-        /// Есть ли название города, начинающееся на переданную букву в "знаниях" бота
+        /// Возвращаем первое название города, начинающееся на переданную букву в "знаниях" бота и удаляем город из "знаний"
         /// </summary>
         /// <param name="firstLetter">Проверяемая буква в "знаниях городов" бота</param>
-        /// <returns>true - название в "знаниях бота" есть, false - названия в "знаниях бота нет</returns>
-        public bool isBotKnowCity(char firstLetter) {
+        /// <returns>Название города</returns>
+        public string cityWhoBotKnow(char firstLetter) {
             firstLetter = char.ToUpper(firstLetter);    // переводим переданную букву в верхний регистр
 
-            if (CitiesKnowBOT != null)
-                if (!String.IsNullOrEmpty(CitiesKnowBOT.Find(item => item.StartsWith(firstLetter))))
-                    // Если есть название города начинающееся с буквы firstLetter
-                    return true;
+            if (CitiesKnowBOT != null) {
+                string city = CitiesKnowBOT.Find(item => item.StartsWith(firstLetter));
 
-            return false;
+                if (!String.IsNullOrEmpty(city))
+                    // Если есть название города начинающееся с буквы firstLetter
+                    return city;
+            }
+
+            return String.Empty;
         }
 
         /// <summary>
@@ -99,6 +103,8 @@ namespace TelegramBot {
         /// </summary>
         /// <returns>true - знает, false - не знает</returns>
         public bool isWikiKnowCity(string city) {
+            city = city.ToUpper();
+
             return CitiesWikiBOT.Contains(city);
         }
 
@@ -108,6 +114,8 @@ namespace TelegramBot {
         /// </summary>
         /// <param name="city">Название удаляемого города</param>
         public void delCitiyInWikiBOT(string city) {
+            city = city.ToUpper();
+
             if (CitiesWikiBOT.Contains(city))
                     CitiesWikiBOT.Remove(city);
         }
@@ -117,8 +125,23 @@ namespace TelegramBot {
         /// </summary>
         /// <param name="city">Название удаляемого города</param>
         public void delCityInKnowBOT(string city) {
+            city = city.ToUpper();
+
             if (CitiesKnowBOT.Contains(city))
                     CitiesKnowBOT.Remove(city);
+        }
+
+
+        /// <summary>
+        /// Создать базу знаний названий городов бота
+        /// </summary>
+        /// <param name="citiesWikiBot">Города, которые "знает" бот</param>
+        private void makeCityKnowBot(List<string> citiesWikiBot) {
+            Random rnd = new Random(DateTime.Now.Millisecond);
+
+            for (int i = rnd.Next(10, 40); i < citiesWikiBot.Count; i += rnd.Next(20, 90)) {
+                CitiesKnowBOT.Add(citiesWikiBot[i]);
+            }
         }
 
         #endregion

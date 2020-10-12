@@ -9,6 +9,7 @@ using Newtonsoft.Json.Linq;
 using Google.Cloud.Dialogflow.V2;
 using Newtonsoft.Json;
 
+
 namespace TelegramBot {
     class Program {
         private static TelegramBotClient Bot;       // телеграм-бот
@@ -17,7 +18,7 @@ namespace TelegramBot {
         private static string sessionID;            // идентификатор сессии (DialogFlow)
 
         private static List<string> cities = File.ReadAllText(@"C:\SKILLBOX_STUDY\C#\HOMEWORK\9\TelegramBot\Data_Files\WorldCities.txt").Split("\r\n").ToList();  // список городов
-        private static List<CitiesGame> games;      // все текущие игры в города
+        private static AllGames games;      // все текущие игры с ботом в города
 
 
         private static Dictionary<string, string> menu = new Dictionary<string, string> {
@@ -29,10 +30,6 @@ namespace TelegramBot {
 
             string token = File.ReadAllText(@"C:\SKILLBOX_STUDY\C#\HOMEWORK\9\TelegramBot\Data_Files\tokens\token");                    // токен для бота
             string dFlowKeyPath = @"C:\SKILLBOX_STUDY\C#\HOMEWORK\9\TelegramBot\Data_Files\tokens\small-talk-rghy-1fa31b152405.json";   // путь к токену для DialogFlow бота
-
-            
-
-            //Console.WriteLine(cities[6]);
 
             // Создание telegram-бота
             Bot = new TelegramBotClient(token);
@@ -49,7 +46,7 @@ namespace TelegramBot {
 
             dFlowClient = dialogFlowBuilder.Build();
 
-            games = new List<CitiesGame>();
+            games = new AllGames();
 
             // Обрабатывем сообщения от пользователя бота
             Bot.OnMessage += Bot_OnMessage;
@@ -86,15 +83,14 @@ namespace TelegramBot {
 
                 await Bot.SendTextMessageAsync(e.CallbackQuery.From.Id, answerText, parseMode: ParseMode.Html);
 
+                await Bot.SendTextMessageAsync(e.CallbackQuery.From.Id, "Теперь можешь назвать город.");
+
                 long chatId = e.CallbackQuery.Message.Chat.Id;
 
-                CitiesGame game = new CitiesGame(chatId, cities)/*;*/
-
-                games.Add(new CitiesGame(chatId, cities));    // добавляем идентификатор чата игрока
-
-
-                //Console.WriteLine(games.Find(item => item.IdGame == chatId).ToString());
-                //gamers.Contains()
+                //games = new AllGames(); // создает контейнер для игр
+                List<string> copyCities = new List<string>();
+                copyCities.AddRange(cities);
+                games.addGame(new CitiesGame(chatId, copyCities));  // добавляет новую игру в города с ботом
 
             }
 
@@ -163,9 +159,82 @@ namespace TelegramBot {
 
 
                 case MessageType.Text:
-                    // Если чат пользователя в игре
-                    if (games. {
+                    // Если чат пользователя в игре, то играем
+                    if (games.isFindId(chatId)) {
+                        string city = message.Text; // город, который отправил пользователь
+                        
+                        // Если пользователь решил выйти из игры
+                        if (city.ToUpper() == "КОНЕЦ") {
+                            games.removeGame(chatId);   // удаляем игру
+                            return;
+                        }
 
+                        Console.WriteLine($"Играет пользователь {message.Chat.Username} с идентификатором чата: {chatId}");
+
+                        // Если город есть в "википедии" бота
+                        if (games.returnGame(chatId).isWikiKnowCity(city)) {
+                            string lastCityBot = games.returnGame(chatId).LastCityBotSay;   // предыдущий названный ботом город
+
+                            // Если бот уже называл город
+                            if (!String.IsNullOrEmpty(lastCityBot)) {
+
+                                if (char.ToUpper(lastCityBot[lastCityBot.Length - 1]) == 'Ь') {
+                                    if (char.ToUpper(lastCityBot[lastCityBot.Length - 2]) != char.ToUpper(city[0])) {
+                                        await Bot.SendTextMessageAsync(chatId, $"Город должен начинаться на букву '{lastCityBot[lastCityBot.Length - 2]}'!");
+                                        return;
+                                    }
+
+                                }
+                                else {
+                                    if (char.ToUpper(lastCityBot[lastCityBot.Length - 1]) != char.ToUpper(city[0])) {
+                                        await Bot.SendTextMessageAsync(chatId, $"Город должен начинаться на букву '{lastCityBot[lastCityBot.Length - 1]}'!");
+                                        return;
+                                    }
+
+                                }
+                            }
+
+
+                            games.returnGame(chatId).delCitiyInWikiBOT(city);   // удаляем город из общего списка городов ("википедии бота"), чтобы город не повторялся
+                            games.returnGame(chatId).delCityInKnowBOT(city);    // удаляем город из "базы знаний" бота
+
+                            // Если город оканчивается на мягкий знак, то бот ищет в своей "базе знаний" город начинающийся на предпоследнюю букву
+                            if (city[city.Length - 1] == 'ь')
+                                city = games.returnGame(chatId).cityWhoBotKnow(city[city.Length - 2]);
+                            else
+                                city = games.returnGame(chatId).cityWhoBotKnow(city[city.Length - 1]);
+
+                            // Если бот не может дать ответ то завершаем игру
+                            if (String.IsNullOrEmpty(city)) {
+                                await Bot.SendTextMessageAsync(chatId, "Молодец, выигрышь за тобой!");
+                                await Bot.SendTextMessageAsync(chatId, "конец");
+
+                                games.removeGame(chatId);   // удаляем игру
+                                return;
+                            }
+
+                            games.returnGame(chatId).LastCityBotSay = city; // последний названный ботом город (для проверки следующего города, введенного пользователем)
+
+                            string htmlCity = $"<i>{city}</i>";
+                            await Bot.SendTextMessageAsync(chatId, htmlCity, parseMode: ParseMode.Html);
+
+                            games.returnGame(chatId).delCitiyInWikiBOT(city);   // удаляем город из общего списка городов ("википедии бота"), чтобы город не повторялся
+                            games.returnGame(chatId).delCityInKnowBOT(city);    // удаляем город из "базы знаний" бота
+
+                        } else {
+                            // Если города нет в "википедии" бота, либо его уже называли
+                            await Bot.SendTextMessageAsync(chatId, $"Город '{city}' моя Википедия не знает! Или этот город уже называли.");
+
+                            return;
+                        }
+                            
+
+
+
+                        //games.removeGame(chatId);   // удаляем игру
+
+
+                        return;
                     }
 
                     break;
