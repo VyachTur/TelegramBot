@@ -70,6 +70,8 @@ namespace TelegramBot {
 
             if (buttonText == menu["Story"]) {
                 // Выбран рассказ сказки
+                Console.WriteLine($"Сказка для пользователя username: '{e.CallbackQuery.From.Username}', имя: '{e.CallbackQuery.From.FirstName}', фамилия: {e.CallbackQuery.From.LastName}, идентификатор: '{e.CallbackQuery.From.Id}'");  // логирование
+
                 await Bot.SendTextMessageAsync(e.CallbackQuery.From.Id, returnFairyTale(@"C:\SKILLBOX_STUDY\C#\HOMEWORK\9\TelegramBot\Data_Files\FairyTales.json"));
                 
             }
@@ -89,6 +91,8 @@ namespace TelegramBot {
 
                 List<string> copyCities = new List<string>();
                 copyCities.AddRange(cities);    // делаем копию списка городов, чтобы источник не менялся
+
+                Console.WriteLine($"Играет пользователь username: '{e.CallbackQuery.From.Username}', имя: '{e.CallbackQuery.From.FirstName}', фамилия: {e.CallbackQuery.From.LastName}, идентификатор: '{e.CallbackQuery.From.Id}'");  // логирование
 
                 games.addGame(new CitiesGame(chatId, copyCities));  // добавляет новую игру в города с ботом
 
@@ -169,8 +173,6 @@ namespace TelegramBot {
                             return;
                         }
 
-                        Console.WriteLine($"Играет пользователь {message.Chat.Username} с идентификатором чата: {chatId}");
-
                         // Если город есть в "википедии" бота
                         if (games.returnGame(chatId).isWikiKnowCity(city)) {
                             string lastCityBot = games.returnGame(chatId).LastCityBotSay;   // предыдущий названный ботом город
@@ -208,6 +210,8 @@ namespace TelegramBot {
                             if (String.IsNullOrEmpty(city)) {
                                 await Bot.SendTextMessageAsync(chatId, "Молодец, выигрышь за тобой!");
                                 await Bot.SendTextMessageAsync(chatId, "конец");
+
+                                Console.WriteLine($"Выиграл! username: '{message.Chat.Username}', имя: '{message.Chat.FirstName}', фамилия: {message.Chat.LastName}");  // логирование
 
                                 games.removeGame(chatId);   // удаляем игру
                                 return;
@@ -290,6 +294,8 @@ namespace TelegramBot {
                     response = await dFlowClient.DetectIntentAsync(session, queryInput);
 
                     answerText = response.QueryResult.FulfillmentText;
+
+                    Console.WriteLine($"Общается username: '{message.Chat.Username}', имя: '{message.Chat.FirstName}', фамилия: {message.Chat.LastName}");  // логирование
 
                     await Bot.SendTextMessageAsync(chatId, answerText); // отправляем пользователю ответ
 
