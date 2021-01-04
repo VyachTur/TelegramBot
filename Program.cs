@@ -48,7 +48,7 @@ namespace TelegramBot {
 
             games = new AllGames();
 
-            // Обрабатывем сообщения от пользователя бота
+            // Подписываем обработчики на события
             Bot.OnMessage += Bot_OnMessage;
             Bot.OnCallbackQuery += Bot_OnCallbackQuery;
 
